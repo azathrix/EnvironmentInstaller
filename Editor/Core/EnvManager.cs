@@ -98,7 +98,16 @@ namespace Azathrix.EnvInstaller.Editor.Core
 
             OnStatusChanged?.Invoke($"正在安装 {dep.GetDisplayName()}...");
             var destDir = GetInstallPath(dep);
-            return await installer.InstallAsync(dep, destDir, _downloader, ct);
+            var result = await installer.InstallAsync(dep, destDir, _downloader, ct);
+
+            if (result)
+            {
+                // 强制重新编译以更新 versionDefines 宏
+                UnityEditor.AssetDatabase.Refresh();
+                UnityEditor.Compilation.CompilationPipeline.RequestScriptCompilation();
+            }
+
+            return result;
         }
 
         /// <summary>
@@ -128,7 +137,16 @@ namespace Azathrix.EnvInstaller.Editor.Core
 
             OnStatusChanged?.Invoke($"正在安装 {dep.GetDisplayName()}...");
             var destDir = GetInstallPath(dep);
-            return await installer.InstallFromCacheAsync(dep, destDir, cachePath, ct);
+            var result = await installer.InstallFromCacheAsync(dep, destDir, cachePath, ct);
+
+            if (result)
+            {
+                // 强制重新编译以更新 versionDefines 宏
+                UnityEditor.AssetDatabase.Refresh();
+                UnityEditor.Compilation.CompilationPipeline.RequestScriptCompilation();
+            }
+
+            return result;
         }
 
         /// <summary>
@@ -162,6 +180,11 @@ namespace Azathrix.EnvInstaller.Editor.Core
                 Directory.Delete(path, true);
                 var metaPath = path + ".meta";
                 if (File.Exists(metaPath)) File.Delete(metaPath);
+
+                // 强制重新编译以更新 versionDefines 宏
+                UnityEditor.AssetDatabase.Refresh();
+                UnityEditor.Compilation.CompilationPipeline.RequestScriptCompilation();
+
                 return true;
             }
             catch
