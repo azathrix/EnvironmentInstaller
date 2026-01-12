@@ -6,6 +6,7 @@ using System.Threading;
 using Cysharp.Threading.Tasks;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.Networking;
 
 namespace Azathrix.EnvInstaller.Editor.Core
 {
@@ -175,7 +176,7 @@ namespace Azathrix.EnvInstaller.Editor.Core
                 {
                     if (File.Exists(cachePath)) File.Delete(cachePath);
 
-                    var url = GetDownloadUrl(dep);
+                    var url = await GetDownloadUrlAsync(dep);
 
                     if (string.IsNullOrEmpty(url))
                     {
@@ -266,11 +267,11 @@ namespace Azathrix.EnvInstaller.Editor.Core
             return EnvManager.GetCachePath(dep.Id, dep.Version, ext);
         }
 
-        private static string GetDownloadUrl(EnvDependency dep)
+        private static async UniTask<string> GetDownloadUrlAsync(EnvDependency dep)
         {
             return dep.DownloadType switch
             {
-                DownloadType.GitHubRepo => GetGitHubRepoUrl(dep.Url, dep.Branch),
+                DownloadType.GitHubRepo => await GetGitHubRepoUrlAsync(dep.Url, dep.Branch),
                 DownloadType.GitHubRelease => dep.Url,
                 DownloadType.NuGet => $"https://www.nuget.org/api/v2/package/{dep.PackageId ?? dep.Id}/{dep.Version}",
                 DownloadType.DirectUrl => dep.Url,
@@ -278,17 +279,69 @@ namespace Azathrix.EnvInstaller.Editor.Core
             };
         }
 
-        private static string GetGitHubRepoUrl(string url, string defaultBranch)
+        private static async UniTask<string> GetGitHubRepoUrlAsync(string url, string defaultBranch)
         {
-            var branch = string.IsNullOrEmpty(defaultBranch) ? "master" : defaultBranch;
+            var refName = string.IsNullOrEmpty(defaultBranch) ? "master" : defaultBranch;
+            var isTag = false;
+
             if (url.Contains("@"))
             {
                 var parts = url.Split('@');
                 url = parts[0];
-                branch = parts[1];
+                refName = parts[1];
             }
             var segments = url.Split('/');
-            return $"https://github.com/{segments[0]}/{segments[1]}/archive/refs/heads/{branch}.zip";
+            var owner = segments[0];
+            var repo = segments[1];
+
+            // 支持 tag: 前缀
+            if (refName.StartsWith("tag:"))
+            {
+                refName = refName.Substring(4);
+                isTag = true;
+
+                // 支持 latest 获取最新 release tag
+                if (refName.Equals("latest", StringComparison.OrdinalIgnoreCase))
+                {
+                    var latestTag = await GetLatestReleaseTagAsync(owner, repo);
+                    if (!string.IsNullOrEmpty(latestTag))
+                    {
+                        refName = latestTag;
+                        Debug.Log($"[DownloadService] 获取到最新 release: {refName}");
+                    }
+                    else
+                    {
+                        Debug.LogWarning("[DownloadService] 无法获取最新 release，使用 main 分支");
+                        refName = "main";
+                        isTag = false;
+                    }
+                }
+            }
+
+            var refType = isTag ? "tags" : "heads";
+            return $"https://github.com/{owner}/{repo}/archive/refs/{refType}/{refName}.zip";
+        }
+
+        private static async UniTask<string> GetLatestReleaseTagAsync(string owner, string repo)
+        {
+            var apiUrl = $"https://api.github.com/repos/{owner}/{repo}/releases/latest";
+            using var request = UnityWebRequest.Get(apiUrl);
+            request.SetRequestHeader("User-Agent", "Unity");
+
+            await request.SendWebRequest();
+
+            if (request.result != UnityWebRequest.Result.Success)
+                return null;
+
+            // 简单解析 JSON 获取 tag_name
+            var json = request.downloadHandler.text;
+            var tagKey = "\"tag_name\":\"";
+            var startIdx = json.IndexOf(tagKey, StringComparison.Ordinal);
+            if (startIdx < 0) return null;
+
+            startIdx += tagKey.Length;
+            var endIdx = json.IndexOf("\"", startIdx, StringComparison.Ordinal);
+            return endIdx > startIdx ? json.Substring(startIdx, endIdx - startIdx) : null;
         }
 
         public static void ClearCompleted()

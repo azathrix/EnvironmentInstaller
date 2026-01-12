@@ -5,6 +5,7 @@ using System.Threading;
 using Azathrix.EnvInstaller.Editor.Core;
 using Cysharp.Threading.Tasks;
 using UnityEngine;
+using UnityEngine.Networking;
 
 namespace Azathrix.EnvInstaller.Editor.Installers
 {
@@ -17,8 +18,8 @@ namespace Azathrix.EnvInstaller.Editor.Installers
 
         public async UniTask<bool> InstallAsync(EnvDependency dep, string destDir, Downloader downloader, CancellationToken ct = default)
         {
-            var (owner, repo, branch) = ParseUrl(dep.Url, dep.Branch);
-            var cachePath = EnvManager.GetCachePath($"{owner}_{repo}", branch, ".zip");
+            var (owner, repo, refName, isTag) = await ParseUrlAsync(dep.Url, dep.Branch);
+            var cachePath = EnvManager.GetCachePath($"{owner}_{repo}", refName, ".zip");
             var tempDir = Path.Combine(Path.GetTempPath(), $"github_{Guid.NewGuid()}");
 
             try
@@ -27,7 +28,9 @@ namespace Azathrix.EnvInstaller.Editor.Installers
                 if (!cacheValid)
                 {
                     if (File.Exists(cachePath)) File.Delete(cachePath);
-                    var url = $"https://github.com/{owner}/{repo}/archive/refs/heads/{branch}.zip";
+                    // tag 使用 refs/tags/，branch 使用 refs/heads/
+                    var refType = isTag ? "tags" : "heads";
+                    var url = $"https://github.com/{owner}/{repo}/archive/refs/{refType}/{refName}.zip";
                     Debug.Log($"[GitHubRepoInstaller] 开始下载: {url}");
                     if (!await downloader.DownloadAsync(url, cachePath, ct))
                     {
@@ -125,17 +128,69 @@ namespace Azathrix.EnvInstaller.Editor.Installers
             return Directory.GetFiles(destDir, "*.*", SearchOption.AllDirectories).Length > 0;
         }
 
-        private static (string owner, string repo, string branch) ParseUrl(string url, string defaultBranch)
+        private static async UniTask<(string owner, string repo, string refName, bool isTag)> ParseUrlAsync(string url, string defaultBranch)
         {
-            var branch = string.IsNullOrEmpty(defaultBranch) ? "master" : defaultBranch;
+            var refName = string.IsNullOrEmpty(defaultBranch) ? "master" : defaultBranch;
+            var isTag = false;
+
+            // 解析 owner/repo
             if (url.Contains("@"))
             {
                 var parts = url.Split('@');
                 url = parts[0];
-                branch = parts[1];
+                refName = parts[1];
             }
             var segments = url.Split('/');
-            return (segments[0], segments[1], branch);
+            var owner = segments[0];
+            var repo = segments[1];
+
+            // 支持 tag: 前缀来指定 tag
+            if (refName.StartsWith("tag:"))
+            {
+                refName = refName.Substring(4);
+                isTag = true;
+
+                // 支持 latest 获取最新 release tag
+                if (refName.Equals("latest", StringComparison.OrdinalIgnoreCase))
+                {
+                    var latestTag = await GetLatestReleaseTagAsync(owner, repo);
+                    if (!string.IsNullOrEmpty(latestTag))
+                    {
+                        refName = latestTag;
+                        Debug.Log($"[GitHubRepoInstaller] 获取到最新 release: {refName}");
+                    }
+                    else
+                    {
+                        Debug.LogWarning("[GitHubRepoInstaller] 无法获取最新 release，使用 main 分支");
+                        refName = "main";
+                        isTag = false;
+                    }
+                }
+            }
+
+            return (owner, repo, refName, isTag);
+        }
+
+        private static async UniTask<string> GetLatestReleaseTagAsync(string owner, string repo)
+        {
+            var apiUrl = $"https://api.github.com/repos/{owner}/{repo}/releases/latest";
+            using var request = UnityWebRequest.Get(apiUrl);
+            request.SetRequestHeader("User-Agent", "Unity");
+
+            await request.SendWebRequest();
+
+            if (request.result != UnityWebRequest.Result.Success)
+                return null;
+
+            // 简单解析 JSON 获取 tag_name
+            var json = request.downloadHandler.text;
+            var tagKey = "\"tag_name\":\"";
+            var startIdx = json.IndexOf(tagKey, StringComparison.Ordinal);
+            if (startIdx < 0) return null;
+
+            startIdx += tagKey.Length;
+            var endIdx = json.IndexOf("\"", startIdx, StringComparison.Ordinal);
+            return endIdx > startIdx ? json.Substring(startIdx, endIdx - startIdx) : null;
         }
 
         private static void CopyDirectory(string src, string dest)
