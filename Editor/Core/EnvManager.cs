@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using Azathrix.EnvInstaller.Editor.Installers;
+using Azathrix.Framework.Editor;
 using Cysharp.Threading.Tasks;
 using UnityEngine;
 
@@ -102,6 +103,10 @@ namespace Azathrix.EnvInstaller.Editor.Core
 
             if (result)
             {
+                // 添加宏定义
+                if (!string.IsNullOrEmpty(dep.DefineSymbol))
+                    DefineSymbolManager.Add(dep.DefineSymbol, "EnvInstaller");
+
                 // 强制重新编译以更新 versionDefines 宏
                 UnityEditor.AssetDatabase.Refresh();
                 UnityEditor.Compilation.CompilationPipeline.RequestScriptCompilation();
@@ -141,6 +146,10 @@ namespace Azathrix.EnvInstaller.Editor.Core
 
             if (result)
             {
+                // 添加宏定义
+                if (!string.IsNullOrEmpty(dep.DefineSymbol))
+                    DefineSymbolManager.Add(dep.DefineSymbol, "EnvInstaller");
+
                 // 强制重新编译以更新 versionDefines 宏
                 UnityEditor.AssetDatabase.Refresh();
                 UnityEditor.Compilation.CompilationPipeline.RequestScriptCompilation();
@@ -180,6 +189,10 @@ namespace Azathrix.EnvInstaller.Editor.Core
                 Directory.Delete(path, true);
                 var metaPath = path + ".meta";
                 if (File.Exists(metaPath)) File.Delete(metaPath);
+
+                // 移除宏定义
+                if (!string.IsNullOrEmpty(dep.DefineSymbol))
+                    DefineSymbolManager.Remove(dep.DefineSymbol);
 
                 // 强制重新编译以更新 versionDefines 宏
                 UnityEditor.AssetDatabase.Refresh();

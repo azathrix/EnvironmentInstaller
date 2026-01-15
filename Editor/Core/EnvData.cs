@@ -94,6 +94,9 @@ namespace Azathrix.EnvInstaller.Editor.Core
         [JsonProperty("optional")]
         public bool Optional { get; set; }
 
+        [JsonProperty("defineSymbol")]
+        public string DefineSymbol { get; set; }
+
         /// <summary>
         /// 获取显示名称，如果未设置则返回 ID
         /// </summary>

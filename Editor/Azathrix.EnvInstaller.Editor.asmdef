@@ -2,7 +2,8 @@
     "name": "Azathrix.EnvInstaller.Editor",
     "rootNamespace": "Azathrix.EnvInstaller",
     "references": [
-        "GUID:4b9323466a12a244b94a9635d32050aa"
+        "GUID:4b9323466a12a244b94a9635d32050aa",
+        "GUID:2c636ad9a741a7b479e5a9af86f88141"
     ],
     "includePlatforms": [
         "Editor"
