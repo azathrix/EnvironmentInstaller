@@ -1,7 +1,7 @@
 ﻿{
     "name": "com.azathrix.environment-installer",
     "displayName": "Environment Installer",
-    "version": "0.0.3",
+    "version": "0.0.4",
     "unity": "6000.3",
     "description": "\u7528\u4e8e\u81ea\u5b9a\u4e49\u5b89\u88c5\u73af\u5883,\u652f\u6301Git Hub,url\u4e0b\u8f7d,npm\u7b49\u65b9\u5f0f\u5b89\u88c5,\u73af\u5883\u68c0\u6d4b\u4e00\u952e\u5b89\u88c5.",
     "keywords": [

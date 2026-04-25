@@ -115,15 +115,8 @@ namespace Azathrix.EnvInstaller.Editor.Installers
             if (!Directory.Exists(destDir))
                 return false;
 
-            if (dep.RequiredFiles != null)
-            {
-                foreach (var file in dep.RequiredFiles)
-                {
-                    if (File.Exists(Path.Combine(destDir, file)))
-                        return true;
-                }
-                return false;
-            }
+            if (dep.RequiredFiles != null && dep.RequiredFiles.Length > 0)
+                return InstallPathHelper.AreRequiredFilesPresent(destDir, dep.RequiredFiles);
 
             return Directory.GetFiles(destDir, "*.*", SearchOption.AllDirectories).Length > 0;
         }

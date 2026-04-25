@@ -268,7 +268,8 @@ namespace Azathrix.EnvInstaller.Editor.UI
                 else
                 {
                     GUI.backgroundColor = new Color(0.5f, 0.8f, 1f);
-                    if (GUILayout.Button("下载", GUILayout.Width(50)))
+                    var actionLabel = dep.InstallType == InstallType.Manual ? "检查" : "下载";
+                    if (GUILayout.Button(actionLabel, GUILayout.Width(50)))
                         DownloadService.StartDownload(dep);
                 }
             }

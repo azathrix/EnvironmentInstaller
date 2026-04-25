@@ -142,6 +142,7 @@ namespace Azathrix.EnvInstaller.Editor.UI
                 dep.DownloadType = (DownloadType)EditorGUILayout.Popup(new GUIContent("下载类型", "DirectUrl: 直接URL下载\nGitHubRelease: GitHub Release下载\nGitHubRepo: GitHub仓库下载\nNuGet: NuGet包下载"), (int)dep.DownloadType, DownloadTypeNames);
                 dep.InstallType = (InstallType)EditorGUILayout.Popup(new GUIContent("安装类型", "Extract: 解压安装(zip/7z)\nCopy: 直接复制\nUnityPackage: 添加到manifest.json\nManual: 仅检测不安装"), (int)dep.InstallType, InstallTypeNames);
                 dep.Optional = EditorGUILayout.Toggle(new GUIContent("可选", "勾选表示此依赖为可选项，不会强制要求安装"), dep.Optional);
+                dep.DefineSymbol = EditorGUILayout.TextField(new GUIContent("宏定义", "可选。留空时自动使用 ID 生成宏名（非字母数字会转为下划线）"), dep.DefineSymbol);
                 EditorGUILayout.EndVertical();
 
                 EditorGUILayout.Space(6);

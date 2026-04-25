@@ -96,14 +96,12 @@ namespace Azathrix.EnvInstaller.Editor.Installers
 
         public bool IsInstalled(EnvDependency dep, string destDir)
         {
-            if (dep.RequiredFiles != null)
-            {
-                foreach (var file in dep.RequiredFiles)
-                {
-                    if (File.Exists(Path.Combine(destDir, file)))
-                        return true;
-                }
-            }
+            if (!Directory.Exists(destDir))
+                return false;
+
+            if (dep.RequiredFiles != null && dep.RequiredFiles.Length > 0)
+                return InstallPathHelper.AreRequiredFilesPresent(destDir, dep.RequiredFiles);
+
             var packageName = string.IsNullOrEmpty(dep.PackageId) ? dep.Id : dep.PackageId;
             return File.Exists(Path.Combine(destDir, $"{packageName}.dll"));
         }

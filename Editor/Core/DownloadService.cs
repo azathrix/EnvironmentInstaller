@@ -121,8 +121,8 @@ namespace Azathrix.EnvInstaller.Editor.Core
             _tasks[dep.Id] = task;
             OnTasksChanged?.Invoke();
 
-            // UnityPackage 类型不需要下载，直接安装
-            if (dep.InstallType == InstallType.UnityPackage)
+            // UnityPackage / Manual 类型不需要下载，直接进入安装（或检查）流程
+            if (dep.InstallType == InstallType.UnityPackage || dep.InstallType == InstallType.Manual)
             {
                 task.State = TaskState.Downloaded;
                 task.Progress = 1f;
